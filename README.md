@@ -1,57 +1,22 @@
-# Project Name
+# Sample of Cloud services extend support with Azure devops pipelines
 
-(short, 1-3 sentenced, description of the project)
-
-## Features
-
-This project framework provides the following features:
-
-* Feature 1
-* Feature 2
-* ...
-
-## Getting Started
-
-### Prerequisites
-
-(ideally very short, if any)
-
-- OS
-- Library version
-- ...
-
-### Installation
-
-(ideally very short)
-
-- npm install [package name]
-- mvn install
-- ...
+This repository contains a sample of how to deploy a cloud service (extended support) using Azure DevOps pipelines.
 
 ### Quickstart
-(Add steps to get up and running quickly)
 
-1. git clone [repository clone url]
-2. cd [repository name]
-3. ...
-
-
-## Demo
-
-A demo app is included to show how to use the project.
-
-To run the demo, follow these steps:
-
-(Add steps to start up the demo)
-
-1.
-2.
-3.
+1. Fork this repository
+2. Update the `azure-pipelines.yml` file with your specific values
+3. Run the pipeline
 
 ## Resources
 
-(Any additional resources or related projects)
+- Uses this sample <https://github.com/Azure-Samples/cloud-services-extended-support/tree/main/101-cses-multirole-rdp>
+- Follows the tutorial from [https://learn.microsoft.com/en-gb/azure/cloud-services-extended-support/deploy-prerequisite](https://learn.microsoft.com/en-us/troubleshoot/azure/cloud-services/azure-devops-publish-cloud-service-extended)
 
-- Link to supporting information
-- Link to similar sample
-- ...
+
+### 101-cses-multirole-rdp(<https://github.com/Azure-Samples/cloud-services-extended-support?search=1>)
+
+ • Cloud Services (extended support) is a new Azure Resource Manager based deployment model for Azure Cloud Services product and is currently in public preview.
+ • Through this sample, you can create a cloud service (extended support) by deploying the ARM templates (using attached cscfg/cspkg) through powershell or using attached cscfg/csdef/cspkg through portal
+ • Resources such as Vnet, PublicIP get created by the ARM template and RDP extension is added at the time of cloud service create
+Please note that virutal network has been added to the cscfg as it is mandatory for creating cloud service (extended support)
