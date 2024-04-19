@@ -1,0 +1,80 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: windows-latest
+
+steps:
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**/*.sln'
+    feedsToUse: 'select'
+    vstsFeed: '88db1bee-c1a6-414b-86b3-643c8fed5097'
+
+# 2. Use MS build to output the cloud service project configuration and package to the temporary location of the local agent.
+
+- task: VSBuild@1
+  inputs:
+    solution: '**\*.sln'
+    msbuildArgs: '/t:Publish /p:DeployOnBuild=true /p:AutomatedBuild=True /p:configuration=release /p:TargetProfile=Cloud /p:PublishDir="$(System.DefaultWorkingDirectory)/Debug/publish"'
+
+# 3. Copy the configuration and package files to the local path on the agent where any artifacts locate.
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: 'Debug/publish'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+# 4. Copy the definition file to the local path on the agent where any artifacts locate.
+
+- task: CopyFiles@2
+  inputs:
+    Contents: '*.csdef'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+# Upload the cloud service via Azure File Copy
+- task: AzureFileCopy@5
+  inputs:
+    SourcePath: '${env:BUILD.ARTIFACTSTAGINGDIRECTORY}/*'
+    azureSubscription: 'cloudsc'
+    Destination: 'AzureBlob'
+    storage: '$(stg_account)'
+    ContainerName: '$(stg_container)'
+    BlobPrefix: '$(stg_prefix)'
+    AdditionalArgumentsForBlobCopy: '--recursive'
+# Generate temp SAS token for 5 mins
+- task: AzurePowerShell@5                                                     # please make sure the Azure PowerShell contains the module of Az and AzureRm.
+  name: GenerateSasToken
+  inputs:
+    azureSubscription: 'azureSubscription'
+    ScriptType: 'InlineScript'
+    Inline: |
+      $account_name = ${env:STG_ACCOUNT}
+      $account_key = ${env:STG_KEY}
+      $context = New-AzStorageContext -StorageAccountName $account_name -StorageAccountKey $account_key
+      $sas = New-AzStorageAccountSASToken -Service Blob -ResourceType Service,Container,Object -Permission "rl" -ExpiryTime (Get-Date).AddMinutes(5) -Context $context
+      $cspkg = ${env:URL_CSPKG} + $sas
+      $cscfg = ${env:URL_CSCFG} + $sas
+      Write-Host ("##vso[task.setvariable variable=cspkg]$cspkg")             # output $cspkg in PowerShell to global variable cspkg
+      Write-Host ("##vso[task.setvariable variable=cscfg]$cscfg")             # output $cscfg in PowerShell to global variable cscfg
+    azurePowerShellVersion: 'LatestVersion'  
+- task: AzureResourceManagerTemplateDeployment@3                               
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: 'azureSubscription'
+    subscriptionId: 'dba20533-24c8-4a20-87ad-3d79ac546216'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: 'cloud-shell-storage-westeurope'
+    location: 'Australia Central'
+    templateLocation: 'Linked artifact'
+    csmFile: 'ContosoCS.template.json'
+    csmParametersFile: 'ContosoCS.parameter.json'
+    overrideParameters: '-packageSasUri $(cspkg) -configurationSasUri $(cscfg) -cloudServiceName cses4test002nellyktest -deploymentLabel deploy$(stg_prefix)'
+    deploymentMode: 'Incremental'
